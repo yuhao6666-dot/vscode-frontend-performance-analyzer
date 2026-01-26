@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/out/**/*.js"
+      ],
+      "preLaunchTask": "${defaultBuildTask}",
+      "env": {
+        "ANTHROPIC_AUTH_TOKEN": "sk-mqVMYuE47RtO9KSVAtkxHQ",
+        "ANTHROPIC_BEDROCK_BASE_URL": "https://adllm.top",
+        "ANTHROPIC_MODEL": "claude-3-5-sonnet-20241022"
+      }
+    }
+  ]
+}

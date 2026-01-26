@@ -1,0 +1,138 @@
+{
+  "name": "frontend-performance-analyzer",
+  "displayName": "Frontend Performance Analyzer",
+  "description": "实时分析前端代码性能问题，集成 AI 智能深度分析，支持 Web Vitals 监控（INP、FCP、LCP、CLS、TTI）",
+  "version": "0.1.0",
+  "publisher": "yuhao6666-dot",
+  "author": {
+    "name": "YU HAO"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/vscode-frontend-performance-analyzer"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/vscode-frontend-performance-analyzer/issues"
+  },
+  "homepage": "https://github.com/yourusername/vscode-frontend-performance-analyzer#readme",
+  "keywords": [
+    "performance",
+    "analyzer",
+    "frontend",
+    "web-vitals",
+    "react",
+    "vue",
+    "javascript",
+    "typescript",
+    "optimization",
+    "AI",
+    "claude",
+    "INP",
+    "FCP",
+    "LCP",
+    "CLS"
+  ],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:vue",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:jsx",
+    "onLanguage:tsx"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "performanceAnalyzer.analyzeFile",
+        "title": "Performance: Analyze Current File"
+      },
+      {
+        "command": "performanceAnalyzer.analyzeWithClaudeCode",
+        "title": "Performance: View Detailed Analysis Report"
+      },
+      {
+        "command": "performanceAnalyzer.clearDiagnostics",
+        "title": "Performance: Clear Diagnostics"
+      }
+    ],
+    "configuration": {
+      "title": "Frontend Performance Analyzer",
+      "properties": {
+        "performanceAnalyzer.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用/禁用性能分析"
+        },
+        "performanceAnalyzer.autoAnalyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "保存文件时自动分析"
+        },
+        "performanceAnalyzer.autoClaudeAnalysis": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动进行 AI 深度分析（使用 MCP）"
+        },
+        "performanceAnalyzer.severity": {
+          "type": "string",
+          "enum": [
+            "Error",
+            "Warning",
+            "Information",
+            "Hint"
+          ],
+          "default": "Warning",
+          "description": "性能问题的显示级别"
+        },
+        "performanceAnalyzer.rules": {
+          "type": "object",
+          "default": {
+            "largeLoop": true,
+            "nestedLoop": true,
+            "frequentDomManipulation": true,
+            "inefficientRendering": true,
+            "memoryLeak": true,
+            "blockingOperation": true,
+            "unoptimizedImage": true,
+            "largeBundle": true
+          },
+          "description": "启用/禁用特定的检测规则"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/babel__traverse": "^7.28.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.23.0",
+    "@babel/traverse": "^7.23.0",
+    "@babel/types": "^7.23.0",
+    "@vue/compiler-sfc": "^3.3.0",
+    "@modelcontextprotocol/sdk": "^0.5.0"
+  }
+}
