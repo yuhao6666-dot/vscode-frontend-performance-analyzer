@@ -3,7 +3,7 @@
   "displayName": "Frontend Performance Analyzer",
   "description": "实时分析前端代码性能问题，集成 AI 智能深度分析，支持 Web Vitals 监控（INP、FCP、LCP、CLS、TTI）",
   "version": "0.1.0",
-  "publisher": "yuhao6666-dot",
+  "publisher": "f6067d40-5dd1-614f-8fec-5a8123d1138d",
   "author": {
     "name": "YU HAO"
   },
@@ -11,12 +11,12 @@
   "icon": "icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/vscode-frontend-performance-analyzer"
+    "url": "https://github.com/yuhao6666-dot/vscode-frontend-performance-analyzer"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/vscode-frontend-performance-analyzer/issues"
+    "url": "https://github.com/yuhao6666-dot/vscode-frontend-performance-analyzer/issues"
   },
-  "homepage": "https://github.com/yourusername/vscode-frontend-performance-analyzer#readme",
+  "homepage": "https://github.com/yuhao6666-dot/vscode-frontend-performance-analyzer#readme",
   "keywords": [
     "performance",
     "analyzer",
