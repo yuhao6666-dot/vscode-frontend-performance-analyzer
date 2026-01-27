@@ -2,7 +2,7 @@
   "name": "frontend-performance-analyzer",
   "displayName": "Frontend Performance Analyzer",
   "description": "实时分析前端代码性能问题，集成 AI 智能深度分析，支持 Web Vitals 监控（INP、FCP、LCP、CLS、TTI）",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "yuhao316",
   "author": {
     "name": "YU HAO"

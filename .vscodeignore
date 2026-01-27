@@ -9,7 +9,10 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 !out/**/*.js
-node_modules/**
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/*.md
+node_modules/**/.*.yml
 examples/**
 test-*.js
 test-*.jsx
