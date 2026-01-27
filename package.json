@@ -2,7 +2,7 @@
   "name": "frontend-performance-analyzer",
   "displayName": "Frontend Performance Analyzer",
   "description": "实时分析前端代码性能问题，集成 AI 智能深度分析，支持 Web Vitals 监控（INP、FCP、LCP、CLS、TTI）",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "yuhao316",
   "author": {
     "name": "YU HAO"
@@ -125,6 +125,7 @@
     "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "@vscode/vsce": "^3.7.1",
     "eslint": "^8.0.0",
     "typescript": "^5.0.0"
   },
@@ -132,7 +133,7 @@
     "@babel/parser": "^7.23.0",
     "@babel/traverse": "^7.23.0",
     "@babel/types": "^7.23.0",
-    "@vue/compiler-sfc": "^3.3.0",
-    "@modelcontextprotocol/sdk": "^0.5.0"
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "@vue/compiler-sfc": "^3.3.0"
   }
 }

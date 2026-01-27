@@ -1,5 +1,4 @@
 const Anthropic = require('@anthropic-ai/sdk');
-
 // 要测试的模型名称列表
 const modelNames = [
     'anthropic.claude-3-5-sonnet-20241022-v2:0',
