@@ -152,11 +152,23 @@ async function analyzeDocument(document: vscode.TextDocument) {
             // 后台异步分析
             (async () => {
                 try {
+                    // 再次检查插件是否启用（防止在异步执行期间被禁用）
+                    const currentConfig = vscode.workspace.getConfiguration('performanceAnalyzer');
+                    const currentEnabled = currentConfig.get<boolean>('enabled', true);
+                    const currentAutoClaudeAnalysis = currentConfig.get<boolean>('autoClaudeAnalysis', true);
+
+                    if (!currentEnabled || !currentAutoClaudeAnalysis) {
+                        console.log('ℹ️ 插件或 AI 分析已被禁用，取消本次分析');
+                        vscode.window.setStatusBarMessage('');
+                        return;
+                    }
+
                     // 检查 Claude CLI 是否可用
                     const isInstalled = await claudeCLIIntegration.isClaudeInstalled();
 
                     if (!isInstalled) {
                         console.log('ℹ️ Claude CLI 未安装，仅使用基础分析');
+                        vscode.window.setStatusBarMessage('');
                         return;
                     }
 
@@ -166,6 +178,16 @@ async function analyzeDocument(document: vscode.TextDocument) {
                         document.languageId,
                         document.uri.fsPath
                     );
+
+                    // 分析完成后，再次确认插件仍然启用
+                    const finalConfig = vscode.workspace.getConfiguration('performanceAnalyzer');
+                    const finalEnabled = finalConfig.get<boolean>('enabled', true);
+
+                    if (!finalEnabled) {
+                        console.log('ℹ️ 插件已被禁用，不显示分析结果');
+                        vscode.window.setStatusBarMessage('');
+                        return;
+                    }
 
                     // 合并基础分析和 AI 分析结果
                     const allIssues = [...basicIssues, ...claudeAnalysis.issues];
@@ -206,6 +228,15 @@ async function analyzeDocument(document: vscode.TextDocument) {
 
 async function analyzeWithClaudeCode(document: vscode.TextDocument) {
     try {
+        // 检查插件是否启用
+        const config = vscode.workspace.getConfiguration('performanceAnalyzer');
+        const enabled = config.get<boolean>('enabled', true);
+
+        if (!enabled) {
+            vscode.window.showWarningMessage('性能分析插件已禁用，请先在设置中启用插件。');
+            return;
+        }
+
         const code = document.getText();
 
         // 检查 Claude CLI 是否可用
