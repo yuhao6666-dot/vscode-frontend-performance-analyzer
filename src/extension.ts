@@ -172,8 +172,8 @@ async function analyzeDocument(document: vscode.TextDocument) {
                     diagnosticProvider.updateDiagnostics(document, allIssues);
                     console.log('✅ AI 深度分析完成，新增', claudeAnalysis.issues.length, '个问题');
 
-                    // 清除状态栏消息
-                    vscode.window.setStatusBarMessage('');
+                    // 更新状态栏消息 - 准备显示报告
+                    vscode.window.setStatusBarMessage('🎨 正在生成报告...', 2000);
 
                     // 显示 AI 分析报告
                     ReportView.show(

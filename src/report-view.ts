@@ -20,7 +20,14 @@ export class ReportView {
         // 如果已经有面板，则重用
         if (ReportView.currentPanel) {
             ReportView.currentPanel.reveal(column);
-            ReportView.currentPanel.webview.html = ReportView.getHtmlContent(analysis, filePath);
+            // 先显示 loading 状态
+            ReportView.currentPanel.webview.html = ReportView.getLoadingHtml();
+            // 延迟一小段时间后显示实际内容，确保 loading 动画可见
+            setTimeout(() => {
+                if (ReportView.currentPanel) {
+                    ReportView.currentPanel.webview.html = ReportView.getHtmlContent(analysis, filePath);
+                }
+            }, 300);
             return;
         }
 
@@ -35,7 +42,16 @@ export class ReportView {
             }
         );
 
-        panel.webview.html = ReportView.getHtmlContent(analysis, filePath);
+        // 先显示 loading 状态
+        panel.webview.html = ReportView.getLoadingHtml();
+
+        // 延迟一小段时间后显示实际内容，确保 loading 动画可见
+        setTimeout(() => {
+            if (panel && !panel.webview.options) {
+                return;
+            }
+            panel.webview.html = ReportView.getHtmlContent(analysis, filePath);
+        }, 300);
 
         // 监听面板关闭
         panel.onDidDispose(() => {
@@ -43,6 +59,69 @@ export class ReportView {
         });
 
         ReportView.currentPanel = panel;
+    }
+
+    /**
+     * 生成 Loading HTML
+     */
+    private static getLoadingHtml(): string {
+        return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>加载中...</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+        }
+
+        .loading-container {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 4px solid var(--vscode-editor-inactiveSelectionBackground);
+            border-top-color: var(--vscode-activityBarBadge-background);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 16px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 10px;
+        }
+
+        .loading-emoji {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="loading-emoji">🤖</div>
+        <div class="spinner"></div>
+        <div class="loading-text">正在生成分析报告...</div>
+    </div>
+</body>
+</html>`;
     }
 
     /**
