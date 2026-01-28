@@ -2,7 +2,7 @@
   "name": "frontend-performance-analyzer",
   "displayName": "Frontend Performance Analyzer",
   "description": "实时分析前端代码性能问题，集成 AI 智能深度分析，支持 Web Vitals 监控（INP、FCP、LCP、CLS、TTI）",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "yuhao316",
   "author": {
     "name": "YU HAO"
@@ -83,7 +83,7 @@
         "performanceAnalyzer.autoClaudeAnalysis": {
           "type": "boolean",
           "default": true,
-          "description": "自动进行 AI 深度分析（使用 MCP）"
+          "description": "自动进行 Claude AI 深度分析（需要在终端运行 claude 命令登录）"
         },
         "performanceAnalyzer.severity": {
           "type": "string",
@@ -130,6 +130,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@babel/parser": "^7.23.0",
     "@babel/traverse": "^7.23.0",
     "@babel/types": "^7.23.0",
