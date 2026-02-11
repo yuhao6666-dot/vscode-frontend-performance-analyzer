@@ -88,10 +88,15 @@ ${code}
    - 使用 innerHTML 的安全和性能问题
 
 3. **渲染性能问题**
-   - React/Vue 组件的重复渲染
+   - React/Vue 组件的不必要重复渲染
    - 缺少 key 的列表渲染
-   - 未使用 memo/computed 等优化
-   - 在渲染函数中创建新对象/函数
+   - React 中未使用 memo/useMemo/useCallback 优化
+   - React 在渲染函数中创建新对象/函数作为 props（导致子组件重渲染）
+
+   **注意：Vue 响应式系统的正确理解**
+   - 直接修改响应式对象的属性（如 this.query.params.name = 'value'）是正常且高效的，这是 Vue 响应式系统的设计初衷
+   - 不要建议使用对象展开运算符来"优化"响应式更新，这反而会降低性能
+   - 只有当数据不需要响应式时，才考虑使用 Object.freeze()
 
 4. **内存泄漏风险**
    - 未清理的事件监听器

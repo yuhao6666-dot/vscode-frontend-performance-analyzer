@@ -30,17 +30,18 @@ export class RenderingRule implements Rule {
 
         // 检查 Vue 组件中的问题
         if (this.isVueComponent(path)) {
-            // 检查 data 中返回新对象
+            // 检查 data 中是否有非常复杂的嵌套对象（3层以上）
             if (this.isInVueData(path)) {
                 if (t.isObjectExpression(path.node)) {
-                    const hasNewObject = this.hasNestedNewObject(path);
-                    if (hasNewObject) {
+                    const nestingLevel = this.getObjectNestingLevel(path);
+                    // 只在嵌套层级过深时才提示（3层以上）
+                    if (nestingLevel >= 3) {
                         issues.push({
                             type: IssueType.InefficientRendering,
                             severity: IssueSeverity.Information,
-                            message: 'data 中包含复杂对象，考虑是否需要响应式',
+                            message: `data 中包含深度嵌套对象（${nestingLevel}层），如果数据量大可能影响响应式性能`,
                             line: path.node.loc?.start.line || 0,
-                            suggestion: '对于不需要响应式的数据，可以使用 Object.freeze() 或放在 setup 外',
+                            suggestion: '对于不需要响应式的深层数据，可以使用 Object.freeze() 冻结；对于需要响应式的数据，保持当前写法即可',
                         });
                     }
                 }
@@ -164,22 +165,37 @@ export class RenderingRule implements Rule {
         return false;
     }
 
-    private hasNestedNewObject(path: NodePath): boolean {
-        let hasNested = false;
+    private getObjectNestingLevel(path: NodePath, currentLevel = 1): number {
+        let maxLevel = currentLevel;
 
-        path.traverse({
-            ObjectExpression(innerPath) {
-                if (innerPath !== path) {
-                    hasNested = true;
-                    innerPath.stop();
-                }
-            },
-            ArrayExpression() {
-                hasNested = true;
-            },
-        });
+        if (t.isObjectExpression(path.node)) {
+            // 遍历对象属性，检查嵌套层级
+            path.traverse({
+                ObjectExpression(innerPath) {
+                    // 跳过自己
+                    if (innerPath === path) {
+                        return;
+                    }
 
-        return hasNested;
+                    // 计算深度
+                    let depth = 1;
+                    let currentPath: NodePath | null = innerPath.parentPath;
+                    while (currentPath && currentPath !== path) {
+                        if (t.isObjectExpression(currentPath.node)) {
+                            depth++;
+                        }
+                        currentPath = currentPath.parentPath;
+                    }
+
+                    maxLevel = Math.max(maxLevel, currentLevel + depth);
+
+                    // 停止遍历子节点，避免重复计算
+                    innerPath.skip();
+                },
+            });
+        }
+
+        return maxLevel;
     }
 
     private findParentMapCall(path: NodePath): NodePath | null {
