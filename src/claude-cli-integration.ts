@@ -39,6 +39,12 @@ export class ClaudeCLIIntegration {
 
         const prompt = this.buildAnalysisPrompt(code, languageId);
 
+        // 🔍 调试：输出完整 prompt
+        console.log('📝 发送给 Claude 的完整 Prompt:');
+        console.log('='.repeat(80));
+        console.log(prompt);
+        console.log('='.repeat(80));
+
         try {
             // 使用 claude 命令进行分析
             // 使用 heredoc 方式传递 prompt
@@ -53,6 +59,12 @@ export class ClaudeCLIIntegration {
             if (stderr) {
                 console.warn('Claude CLI stderr:', stderr);
             }
+
+            // 🔍 调试：输出 Claude 的原始响应
+            console.log('📥 Claude 的原始响应:');
+            console.log('='.repeat(80));
+            console.log(stdout);
+            console.log('='.repeat(80));
 
             console.log('✅ Claude CLI 分析完成');
             return this.parseAnalysisResult(stdout);
@@ -110,6 +122,31 @@ ${code}
    - 内联大型数据
    - 未压缩的资源
 
+7. **Web Vitals 性能问题**
+   - **LCP (Largest Contentful Paint)** - 最大内容绘制
+     * 大型图片或视频未优化
+     * 阻塞渲染的 CSS/JS 资源
+     * 服务器响应时间过长
+     * 客户端渲染延迟
+   - **INP (Interaction to Next Paint)** - 交互响应性
+     * 长时间运行的 JavaScript 任务
+     * 事件处理器中的昂贵操作
+     * 大量同步更新导致的阻塞
+     * 主线程繁忙影响交互响应
+   - **CLS (Cumulative Layout Shift)** - 累积布局偏移
+     * 图片/视频未设置尺寸
+     * 动态注入内容导致布局变化
+     * 使用不稳定的字体加载
+     * 广告或嵌入式内容导致的偏移
+   - **FCP (First Contentful Paint)** - 首次内容绘制
+     * 阻塞的 CSS/JS 资源
+     * 未优化的关键渲染路径
+     * 字体加载策略不当
+   - **TTI (Time to Interactive)** - 可交互时间
+     * 大量的 JavaScript 执行
+     * 长任务阻塞主线程
+     * 不必要的初始化代码
+
 ## 输出要求
 
 请以 JSON 格式输出分析结果，格式如下：
@@ -128,9 +165,12 @@ ${code}
   ],
   "recommendations": [
     "优先优化嵌套循环问题",
-    "添加防抖处理频繁调用的函数"
+    "添加防抖处理频繁调用的函数",
+    "为图片添加 width/height 属性以改善 CLS",
+    "使用代码拆分和懒加载优化 LCP",
+    "优化长任务以改善 INP 和 TTI"
   ],
-  "summary": "整体分析说明..."
+  "summary": "整体分析说明（包含 Web Vitals 相关的性能评估和优化建议）..."
 }
 \`\`\`
 
