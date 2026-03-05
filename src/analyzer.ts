@@ -5,8 +5,11 @@ import * as t from '@babel/types';
 import { parse as parseVue } from '@vue/compiler-sfc';
 import { PerformanceIssue, IssueType, IssueSeverity } from './types';
 import { rules } from './rules';
+import { VueTemplateRule } from './rules/vue-template-rule';
 
 export class PerformanceAnalyzer {
+    private vueTemplateRule = new VueTemplateRule();
+
     async analyze(
         code: string,
         languageId: string,
@@ -16,13 +19,28 @@ export class PerformanceAnalyzer {
 
         try {
             let scriptCode = code;
-            let offset = 0;
+            let scriptOffset = 0;
+            let templateCode = '';
+            let templateOffset = 0;
 
             // 处理 Vue 文件
             if (languageId === 'vue') {
-                const result = this.extractScriptFromVue(code);
+                const result = this.extractFromVue(code);
                 scriptCode = result.script;
-                offset = result.offset;
+                scriptOffset = result.scriptOffset;
+                templateCode = result.template;
+                templateOffset = result.templateOffset;
+
+                // 检测 Vue template
+                if (templateCode) {
+                    const templateIssues = this.vueTemplateRule.check(templateCode);
+                    issues.push(
+                        ...templateIssues.map((issue) => ({
+                            ...issue,
+                            line: issue.line + templateOffset,
+                        }))
+                    );
+                }
             }
 
             // 解析代码为 AST
@@ -49,7 +67,7 @@ export class PerformanceAnalyzer {
                             issues.push(
                                 ...ruleIssues.map((issue) => ({
                                     ...issue,
-                                    line: issue.line + offset,
+                                    line: issue.line + scriptOffset,
                                 }))
                             );
                         }
@@ -67,24 +85,43 @@ export class PerformanceAnalyzer {
         return this.filterAndSortIssues(issues);
     }
 
-    private extractScriptFromVue(code: string): { script: string; offset: number } {
+    private extractFromVue(code: string): {
+        script: string;
+        scriptOffset: number;
+        template: string;
+        templateOffset: number;
+    } {
         try {
             const { descriptor } = parseVue(code);
+
+            let script = '';
+            let scriptOffset = 0;
+            let template = '';
+            let templateOffset = 0;
+
+            // 提取 script
             if (descriptor.script || descriptor.scriptSetup) {
-                const script = descriptor.scriptSetup || descriptor.script;
-                if (script) {
-                    const lines = code.substring(0, script.loc.start.offset).split('\n');
-                    return {
-                        script: script.content,
-                        offset: lines.length - 1,
-                    };
+                const scriptBlock = descriptor.scriptSetup || descriptor.script;
+                if (scriptBlock) {
+                    script = scriptBlock.content;
+                    // 修复：正确计算行号 - script 标签所在行号
+                    scriptOffset = scriptBlock.loc.start.line - 1;
                 }
             }
+
+            // 提取 template
+            if (descriptor.template) {
+                template = descriptor.template.content;
+                // 修复：正确计算行号 - template 标签所在行号
+                templateOffset = descriptor.template.loc.start.line - 1;
+            }
+
+            return { script, scriptOffset, template, templateOffset };
         } catch (error) {
             console.error('Vue 文件解析失败:', error);
         }
 
-        return { script: code, offset: 0 };
+        return { script: code, scriptOffset: 0, template: '', templateOffset: 0 };
     }
 
     private checkFileLevel(code: string, languageId: string): PerformanceIssue[] {
