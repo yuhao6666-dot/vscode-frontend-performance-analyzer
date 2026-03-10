@@ -1,8 +1,16 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { ClaudeAnalysisResult, PerformanceIssue, IssueType, IssueSeverity } from './types';
 
 const execAsync = promisify(exec);
+
+// 单个分析请求最大 token 估算上限（按字符数粗算，1 token ≈ 4 chars）
+const MAX_CODE_CHARS = 24000; // ~6000 tokens，留 prompt 框架的余量
+// 优先级截取：超过此行数时只提取关键代码块
+const MAX_LINES_BEFORE_EXTRACT = 400;
 
 /**
  * Claude CLI 集成
@@ -31,28 +39,32 @@ export class ClaudeCLIIntegration {
     ): Promise<ClaudeAnalysisResult> {
         console.log('🤖 使用 Claude CLI 进行分析...');
 
-        // 检查 Claude CLI 是否可用
+        // 检查缓存 —— 防 compact：即使 context 被压缩，磁盘结果仍在
+        if (filePath) {
+            const cached = this.readCache(filePath, code);
+            if (cached) {
+                console.log('📂 命中磁盘缓存，跳过 AI 分析');
+                return cached;
+            }
+        }
+
         const isInstalled = await this.isClaudeInstalled();
         if (!isInstalled) {
             throw new Error('Claude CLI 未安装。请先安装 Claude CLI：npm install -g @anthropic-ai/claude-cli');
         }
 
-        const prompt = this.buildAnalysisPrompt(code, languageId);
+        // 内容压缩 + 优先级截取，减少 token 消耗
+        const processedCode = this.prepareCode(code);
+        console.log(`📊 代码压缩: ${code.length} → ${processedCode.length} 字符`);
 
-        // 🔍 调试：输出完整 prompt
-        console.log('📝 发送给 Claude 的完整 Prompt:');
-        console.log('='.repeat(80));
-        console.log(prompt);
-        console.log('='.repeat(80));
+        const prompt = this.buildAnalysisPrompt(processedCode, languageId);
 
         try {
-            // 使用 claude 命令进行分析
-            // 使用 heredoc 方式传递 prompt
             const { stdout, stderr } = await execAsync(
                 `claude << 'PROMPT_END'\n${prompt}\nPROMPT_END`,
                 {
-                    maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-                    timeout: 60000, // 60秒超时
+                    maxBuffer: 1024 * 1024 * 10,
+                    timeout: 60000,
                 }
             );
 
@@ -60,14 +72,15 @@ export class ClaudeCLIIntegration {
                 console.warn('Claude CLI stderr:', stderr);
             }
 
-            // 🔍 调试：输出 Claude 的原始响应
-            console.log('📥 Claude 的原始响应:');
-            console.log('='.repeat(80));
-            console.log(stdout);
-            console.log('='.repeat(80));
-
             console.log('✅ Claude CLI 分析完成');
-            return this.parseAnalysisResult(stdout);
+            const result = this.parseAnalysisResult(stdout);
+
+            // 持久化到磁盘 —— 防 compact 导致数据丢失
+            if (filePath) {
+                this.writeCache(filePath, code, result);
+            }
+
+            return result;
         } catch (error: any) {
             console.error('❌ Claude CLI 调用失败:', error);
             throw new Error(`Claude CLI 分析失败: ${error.message}`);
@@ -75,10 +88,137 @@ export class ClaudeCLIIntegration {
     }
 
     /**
+     * 内容压缩 + 优先级截取
+     * ⚠️ 为减少 token 消耗，超长文件只提取关键代码块
+     */
+    private prepareCode(code: string): string {
+        // Step 1: 压缩空白
+        let compressed = code
+            .replace(/\n\s*\n\s*\n+/g, '\n\n')  // 多余空行
+            .replace(/[ \t]+/g, ' ')              // 多余空格
+            .replace(/^\s+|\s+$/gm, '');          // 行首尾空白
+
+        // Step 2: 如果压缩后仍超限，提取关键代码块
+        const lines = compressed.split('\n');
+        if (lines.length > MAX_LINES_BEFORE_EXTRACT || compressed.length > MAX_CODE_CHARS) {
+            compressed = this.extractKeyBlocks(lines);
+            console.log(`✂️ 文件过长，已提取关键块: ${lines.length} 行 → ${compressed.split('\n').length} 行`);
+        }
+
+        return compressed;
+    }
+
+    /**
+     * 提取关键代码块：函数、类、组件、v-for/useEffect 等
+     */
+    private extractKeyBlocks(lines: string[]): string {
+        const keyPatterns = [
+            /^\s*(export\s+)?(default\s+)?(async\s+)?function\s+/,
+            /^\s*(export\s+)?(default\s+)?class\s+/,
+            /^\s*(const|let|var)\s+\w+\s*=\s*(async\s+)?\(.*\)\s*=>/,
+            /^\s*(const|let|var)\s+\w+\s*=\s*use\w+/,   // hooks
+            /v-for|v-if|@click|:key/,                    // Vue 模板关键指令
+            /useEffect|useMemo|useCallback|useState/,     // React hooks
+            /addEventListener|setTimeout|setInterval/,    // 潜在性能问题
+            /innerHTML|querySelector|getElementById/,
+            /for\s*\(|\.forEach\(|\.map\(|\.filter\(/,   // 循环
+        ];
+
+        const result: string[] = [];
+        let i = 0;
+        while (i < lines.length) {
+            const line = lines[i];
+            if (keyPatterns.some(p => p.test(line))) {
+                // 提取当前块（找到匹配行 ± 上下文）
+                const start = Math.max(0, i - 1);
+                const blockEnd = this.findBlockEnd(lines, i);
+                result.push(...lines.slice(start, blockEnd + 1));
+                result.push(''); // 块间空行
+                i = blockEnd + 1;
+            } else {
+                i++;
+            }
+        }
+
+        // 兜底：如果什么都没提取到，直接截断
+        if (result.length === 0) {
+            return lines.slice(0, MAX_LINES_BEFORE_EXTRACT).join('\n')
+                + '\n// ... (文件过长，已截断)';
+        }
+
+        return result.join('\n');
+    }
+
+    /**
+     * 找到代码块结束行（简单括号配对）
+     */
+    private findBlockEnd(lines: string[], startIndex: number): number {
+        let depth = 0;
+        let started = false;
+        for (let i = startIndex; i < Math.min(startIndex + 100, lines.length); i++) {
+            for (const ch of lines[i]) {
+                if (ch === '{') { depth++; started = true; }
+                if (ch === '}') { depth--; }
+            }
+            if (started && depth <= 0) {
+                return i;
+            }
+        }
+        return Math.min(startIndex + 50, lines.length - 1);
+    }
+
+    /**
+     * 读取磁盘缓存（防 compact 兜底）
+     * 缓存 key = 文件路径 + 内容 hash，内容变化自动失效
+     */
+    private readCache(filePath: string, code: string): ClaudeAnalysisResult | null {
+        try {
+            const cacheFile = this.getCachePath(filePath, code);
+            if (!fs.existsSync(cacheFile)) return null;
+            const raw = fs.readFileSync(cacheFile, 'utf-8');
+            return JSON.parse(raw) as ClaudeAnalysisResult;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * 写入磁盘缓存
+     */
+    private writeCache(filePath: string, code: string, result: ClaudeAnalysisResult): void {
+        try {
+            const cacheFile = this.getCachePath(filePath, code);
+            fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+            fs.writeFileSync(cacheFile, JSON.stringify(result, null, 2), 'utf-8');
+            console.log('💾 分析结果已缓存:', cacheFile);
+        } catch (e) {
+            console.warn('缓存写入失败（不影响功能）:', e);
+        }
+    }
+
+    /**
+     * 生成缓存文件路径，内容 hash 作为 key 保证变更后失效
+     */
+    private getCachePath(filePath: string, code: string): string {
+        const hash = this.simpleHash(code);
+        const safeName = path.basename(filePath).replace(/[^a-zA-Z0-9.]/g, '_');
+        return path.join(os.tmpdir(), '.perf-analyzer-cache', `${safeName}_${hash}.json`);
+    }
+
+    /** 简单字符串 hash（djb2） */
+    private simpleHash(str: string): string {
+        let h = 5381;
+        for (let i = 0; i < str.length; i++) {
+            h = ((h << 5) + h) ^ str.charCodeAt(i);
+        }
+        return (h >>> 0).toString(36);
+    }
+
+    /**
      * 构建分析 prompt
      */
     private buildAnalysisPrompt(code: string, languageId: string): string {
-        return `请分析以下 ${languageId} 代码的性能问题：
+        return `请分析以下 ${languageId} 代码的性能问题（内容已压缩/提取关键块）：
 
 \`\`\`${languageId}
 ${code}

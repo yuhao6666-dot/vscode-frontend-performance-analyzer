@@ -76,16 +76,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // 监听文档打开
-    const onDidOpen = vscode.workspace.onDidOpenTextDocument(async (document) => {
-        const config = vscode.workspace.getConfiguration('performanceAnalyzer');
-        const enabled = config.get<boolean>('enabled', true);
-
-        if (enabled && isSupportedLanguage(document.languageId)) {
-            await analyzeDocument(document);
-        }
-    });
-
     // 监听配置变化
     const onDidChangeConfiguration = vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration('performanceAnalyzer')) {
@@ -103,17 +93,10 @@ export function activate(context: vscode.ExtensionContext) {
         claudeCodeAnalyzeCommand,
         clearCommand,
         onDidSave,
-        onDidOpen,
         onDidChangeConfiguration,
         diagnosticProvider.diagnosticCollection
     );
 
-    // 分析已打开的文档
-    vscode.workspace.textDocuments.forEach((document) => {
-        if (isSupportedLanguage(document.languageId)) {
-            analyzeDocument(document);
-        }
-    });
 }
 
 async function analyzeDocument(document: vscode.TextDocument) {
